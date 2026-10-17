@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marvel Watch Order</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0b0d12; --panel: #151922; --panel2: #1c2230; --text: #f4f5f7;
+  --muted: #9da7b8; --red: #ed1d24; --border: #2b3240; --green: #67d99a;
+  --gold: #f5c451; --blue: #6aa9ff;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; }
+header { padding: 32px 20px 25px; background: linear-gradient(135deg, #45080d, #161923 65%); border-bottom: 1px solid var(--border); }
+.container { max-width: 1200px; margin: auto; }
+.eyebrow { color: #ff8589; text-transform: uppercase; letter-spacing: 3px; font-size: 12px; font-weight: 800; }
+h1 { margin: 8px 0; font-size: clamp(30px, 5vw, 48px); }
+header p { color: #c6cbd5; margin: 0; }
+main { max-width: 1200px; margin: auto; padding: 22px 16px 60px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat, .controls, .item { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+.stat { padding: 16px; }
+.stat strong { display: block; font-size: 26px; }
+.stat span { color: var(--muted); font-size: 13px; }
+.progress { height: 7px; background: #303746; border-radius: 99px; overflow: hidden; margin-top: 10px; }
+.progress div { height: 100%; width: 0; background: var(--green); transition: width .2s; }
+.controls { padding: 14px; margin-bottom: 14px; }
+.filters { display: grid; grid-template-columns: 2fr 1.4fr 1.2fr 1fr; gap: 10px; }
+input, select, button { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+button { cursor: pointer; }
+button:hover { border-color: var(--red); }
+button.primary { background: var(--red); border-color: var(--red); }
+.section-title { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin: 28px 0 10px; font-weight: 700; }
+.section-title span:last-child { white-space: nowrap; letter-spacing: 1px; }
+.item { display: grid; grid-template-columns: 50px minmax(0,1fr) auto; gap: 13px; padding: 14px; margin-bottom: 9px; align-items: start; }
+.number { background: #252b38; color: #cbd2df; border-radius: 8px; padding: 9px 4px; text-align: center; font-weight: 800; font-size: 14px; }
+.number small { display: block; font-size: 9px; letter-spacing: 1px; color: var(--muted); margin-top: 3px; }
+.item h3 { margin: 0 0 6px; font-size: 16px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 7px; align-items: center; }
+.tag { font-size: 11px; border: 1px solid #424a5a; color: #c4ccda; border-radius: 99px; padding: 3px 8px; }
+.tag.essential { color: var(--gold); border-color: #6b5a25; }
+.tag.recommended { color: var(--blue); border-color: #2f4c78; }
+.tag.optional { color: var(--muted); }
+.notes { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.actions { display: flex; gap: 6px; align-items: center; }
+.actions button { font-size: 12px; padding: 7px 10px; text-decoration: none; color: var(--text); background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; }
+.actions button.on-w { background: var(--green); border-color: var(--green); color: #07140d; }
+.actions button.on-s { background: #5a2226; border-color: var(--red); }
+.item.watched { opacity: .6; }
+.item.watched h3 { text-decoration: line-through; }
+.item.skipped { opacity: .4; }
+.empty { padding: 40px; text-align: center; color: var(--muted); }
+footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
+@media(max-width:800px) {
+  .filters { grid-template-columns: 1fr 1fr; }
+  .filters input { grid-column: 1 / -1; }
+  .item { grid-template-columns: 42px minmax(0,1fr); }
+  .actions { grid-column: 2; }
+}
+@media(max-width:420px) {
+  .stats { gap: 6px; } .stat { padding: 10px; } .stat strong { font-size: 21px; }
+  .filters { grid-template-columns: 1fr; } .filters input { grid-column: auto; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <div class="eyebrow">Your personal archive</div>
+    <h1>MARVEL WATCH ORDER</h1>
+    <p>Every film, short, and series. Every universe. Your journey through Marvel.</p>
+  </div>
+</header>
+
+<main>
+  <section class="stats">
+    <div class="stat"><strong id="total">0</strong><span>Catalog entries</span></div>
+    <div class="stat"><strong id="watched">0</strong><span>Completed</span></div>
+    <div class="stat">
+      <strong id="percent">0%</strong><span>Progress (skipped excluded)</span>
+      <div class="progress"><div id="progressBar"></div></div>
+    </div>
+  </section>
+
+  <section class="controls">
+    <div class="filters">
+      <input id="search" placeholder="Search titles, notes..." aria-label="Search">
+      <select id="section" aria-label="Section"><option value="">All sections</option></select>
+      <select id="importance" aria-label="Importance">
+        <option value="">All importance</option>
+        <option value="E">Essential</option>
+        <option value="R">Recommended</option>
+        <option value="O">Optional</option>
+      </select>
+      <select id="status" aria-label="Status">
+        <option value="">All statuses</option>
+        <option value="unwatched">Not watched</option>
+        <option value="watched">Watched</option>
+        <option value="skipped">Skipped</option>
+      </select>
+    </div>
+  </section>
+
+  <div id="results"></div>
+</main>
+
+<footer>Marvel Watch Order · Progress saved locally in this browser</footer>
+
+<script>
+/* Format: KIND|Title|Importance|Rating|Note
+   KIND: F film, T tv, S special/short. Importance: E / R / O.
+   "@" lines expand seasons: @|Title|Imp|Rating|[start:]eps,eps,...|label
+   "#" lines start a section. */
+const RAW = `
+# LEGACY: WWII & THE 1940S
+F|Captain America: The First Avenger|E|7.0|1 Credit · STOP before credits — the credits scene belongs RIGHT BEFORE The Avengers
+S|Marvel One-Shot: Agent Carter|O|7.2|Short film
+T|Agent Carter (Season 1)|R|7.5|8 eps · 1946
+T|Agent Carter (Season 2)|R|7.5|10 eps · 1947 Hollywood
+# LEGACY: THE X-MEN SAGA
+F|X-Men: First Class|R|7.3|
+F|X-Men Origins: Wolverine|O|6.3|Optional — Logan is the essential Wolverine film.
+F|X-Men|R|7.0|
+F|X2: X-Men United|R|7.0|
+F|X-Men: The Last Stand|R|6.4|
+F|The Wolverine|O|6.4|Optional — bridges The Last Stand to Days of Future Past.
+F|X-Men: Days of Future Past|R|7.5|
+F|X-Men: Apocalypse|R|6.5|Optional — continues the First Class and Days of Future Past timeline.
+F|Dark Phoenix|R|6.0|Optional — the final film of the X-Men saga.
+# LEGACY: 1990S
+F|Captain Marvel|E|6.8|1 Credit · STOP before end-credits — post-credit scene belongs after Infinity War
+F|Blade|O|6.8|Watch before Blade II.
+# LEGACY: 2000S
+F|Blade II|O|6.6|
+F|Blade: Trinity|O|5.9|
+T|Blade: The Series (Season 1)|O|6.4|13 eps · Watch after Blade: Trinity
+F|Spider-Man|R|7.3|Tobey Maguire's Spider-Man returns in No Way Home.
+F|Spider-Man 2|R|7.3|
+F|Spider-Man 3|R|6.5|
+F|The Amazing Spider-Man|R|6.7|Andrew Garfield's Spider-Man returns in No Way Home.
+F|The Amazing Spider-Man 2|R|6.6|
+F|Daredevil (2003)|O|5.3|
+F|Elektra|O|5.1|
+F|Fantastic Four (2005)|O|5.8|Optional — standalone, pre-MCU Marvel.
+F|Fantastic Four: Rise of the Silver Surfer|O|5.6|Optional — sequel to the 2005 film.
+# LEGACY: ALTERNATE UNIVERSES
+F|Spider-Man: Into the Spider-Verse|O|8.4|
+@|X-Men: The Animated Series|O||13,13,19,21,10|animated eps
+@|X-Men '97|O|8.7|10,9|animated eps
+# EXPANDED MARVEL: LIVE ACTION
+F|Captain America (1944)|O||
+T|Spidey Super Stories|O||29 short segments
+F|Spider-Man (1977)|O||
+F|The Incredible Hulk (1977)|O||
+F|The Return of the Incredible Hulk|O||
+T|The Incredible Hulk (Season 1)|O||10 eps
+T|The Amazing Spider-Man (Season 1)|O||5 eps
+T|Japanese Spider-Man (Season 1)|O||41 eps
+T|The Amazing Spider-Man (Season 2)|O||8 eps
+F|Dr. Strange|O||
+T|The Incredible Hulk (Season 2)|O||22 eps
+F|Captain America (1979)|O||
+T|The Incredible Hulk (Season 3)|O||23 eps
+F|Captain America II: Death Too Soon|O||
+T|The Incredible Hulk (Season 4)|O||18 eps
+T|The Incredible Hulk (Season 5)|O||7 eps
+F|Howard the Duck|O||
+F|The Incredible Hulk Returns|O||
+F|The Trial of the Incredible Hulk|O||
+F|The Punisher (1989)|O||
+F|The Death of the Incredible Hulk|O||
+F|Captain America (1990)|O||
+F|Generation X|O||
+F|Nick Fury: Agent of S.H.I.E.L.D.|O||
+F|Hulk (2003)|O|5.6|
+F|The Punisher (2004)|O|6.4|
+F|Man-Thing|O|4.3|
+F|Ghost Rider|O|5.6|Optional — standalone, no MCU connection.
+F|Punisher: War Zone|O|5.9|
+F|Ghost Rider: Spirit of Vengeance|O|5.0|Optional — standalone sequel.
+F|Fantastic Four (2015)|O|4.4|
+T|Legion (Season 1)|O|7.5|8 eps
+T|The Gifted (Season 1)|O|7.6|13 eps
+T|Legion (Season 2)|O|7.5|11 eps
+T|The Gifted (Season 2)|O|7.6|16 eps
+T|Legion (Season 3)|O|7.5|8 eps
+F|The New Mutants|O|6.1|Optional — the final X-Men film.
+F|Madame Web|O|5.3|Optional — standalone.
+F|Kraven the Hunter|O|6.4|Optional — standalone.
+T|Spider-Noir (Season 1)|O|8.4|8 eps
+# EXPANDED MARVEL: ANIMATED FILMS
+F|Ultimate Avengers|O||
+F|Ultimate Avengers 2: Rise of the Panther|O||
+F|The Invincible Iron Man|O||
+F|Doctor Strange: The Sorcerer Supreme|O||
+F|Next Avengers: Heroes of Tomorrow|O||
+F|Hulk Vs. Wolverine|O||
+F|Hulk Vs. Thor|O||
+F|Planet Hulk|O||
+F|Thor: Tales of Asgard|O||
+F|Iron Man: Rise of Technovore|O||
+S|Phineas and Ferb: Mission Marvel|O||
+S|Lego Marvel Super Heroes: Maximum Overload|O||5 animated shorts
+F|Iron Man & Hulk: Heroes United|O||
+F|Avengers Confidential: Black Widow & Punisher|O||
+F|Iron Man & Captain America: Heroes United|O||
+F|Big Hero 6|O||
+S|Lego Marvel Super Heroes: Avengers Reassembled!|O||
+F|Marvel Super Hero Adventures: Frost Fight!|O||
+F|Hulk: Where Monsters Dwell|O||
+S|Lego Marvel Super Heroes: Guardians of the Galaxy – The Thanos Threat|O||
+S|Lego Marvel Super Heroes – Black Panther: Trouble in Wakanda|O||
+S|Marvel Rising: Initiation|O||6 animated shorts
+F|Marvel Rising: Secret Warriors|O||
+S|Marvel Rising: Chasing Ghosts|O||
+S|Spider-Ham: Caught in a Ham|O||Short film
+S|Marvel Rising: Heart of Iron|O||
+S|Lego Marvel Spider-Man: Vexed by Venom|O||
+S|Marvel Rising: Battle of the Bands|O||
+S|Marvel Rising: Operation Shuri|O||
+S|Marvel Rising: Playing with Fire|O||
+S|Lego Marvel Avengers: Climate Conundrum|O||4 animated eps
+S|Lego Marvel Avengers: Loki in Training|O||
+S|Lego Marvel Avengers: Time Twisted|O||
+S|Lego Marvel Avengers: Code Red|O||
+S|The Spider Within: A Spider-Verse Story|O||Short film
+S|Lego Marvel Avengers: Mission Demolition|O||
+S|Spidey and Iron Man: Avengers Team-Up!|O||
+S|Lego Marvel Avengers: Strange Tails|O||2 animated eps
+S|Spidey and the Avengers: Halloween Team-Up!|O||
+# EXPANDED MARVEL: ANIMATED SERIES
+@|The Marvel Super Heroes|O||65|animated eps
+@|The Fantastic Four (1967)|O||20|animated eps
+@|Spider-Man (1967)|O||20|animated eps
+@|Spider-Man (1967)|O||2:19,13|animated eps
+@|The New Fantastic Four|O||13|animated eps
+@|Fred and Barney Meet the Thing|O||26|animated eps
+@|Spider-Woman|O||16|animated eps
+@|Spider-Man (1981)|O||26|animated eps
+@|Spider-Man and His Amazing Friends|O||13,3,8|animated eps
+@|The Incredible Hulk (1982)|O||13|animated eps
+S|X-Men: Pryde of the X-Men|O||
+S|Solarman|O||
+@|Iron Man (1994)|O||13,13|animated eps
+@|Fantastic Four (1994)|O||13,13|animated eps
+@|Spider-Man: The Animated Series|O||13,14,14,11,13|animated eps
+@|The Incredible Hulk (1996)|O||13,8|animated eps
+@|Silver Surfer|O||13|animated eps
+@|Spider-Man Unlimited|O||13|animated eps
+@|The Avengers: United They Stand|O||13|animated eps
+@|X-Men: Evolution|O||13,17,13,9|animated eps
+@|Spider-Man: The New Animated Series|O||13|animated eps
+@|Fantastic Four: World's Greatest Heroes|O||26|animated eps
+@|The Spectacular Spider-Man|O||13,13|animated eps
+@|Wolverine and the X-Men|O||26|animated eps
+@|Iron Man: Armored Adventures|O||26,26|animated eps
+@|The Super Hero Squad Show|O||26,26|animated eps
+@|The Avengers: Earth's Mightiest Heroes|O||26,26|animated eps
+@|Marvel Anime: Iron Man|O||12|animated eps
+@|Marvel Anime: Wolverine|O||12|animated eps
+@|Marvel Anime: X-Men|O||12|animated eps
+@|Marvel Anime: Blade|O||12|animated eps
+@|Ultimate Spider-Man|O||26,26,26,26|animated eps
+@|Avengers Assemble|O||26,26,26,26,23|animated eps
+@|Hulk and the Agents of S.M.A.S.H.|O||26,26|animated eps
+@|Marvel Disk Wars: The Avengers|O||51|animated eps
+@|Guardians of the Galaxy (2015)|O||26,26,26|animated eps
+@|Marvel Future Avengers|O||26,13|animated eps
+@|Spider-Man (2017)|O||26,26,6|animated eps
+@|Big Hero 6: The Series|O||22,24,10|animated eps
+@|M.O.D.O.K.|O||10|animated eps
+@|Spidey and His Amazing Friends|O||25|animated eps
+@|Spidey and His Amazing Friends|O||2:29,30,19,10|animated eps
+@|Hit-Monkey|O||10|animated eps
+@|Hit-Monkey|O||2:10|animated eps
+@|Moon Girl and Devil Dinosaur|O||16,24|animated eps
+@|Iron Man and His Awesome Friends|O||30|animated eps
+# PHASE 1 — THE AVENGERS INITIATIVE (2008–2012)
+F|Iron Man|E|7.7|Watch all credits.
+F|Iron Man 2|E|6.9|1 Credit · STOP before credits — the credits scene belongs RIGHT BEFORE Thor
+F|The Incredible Hulk|E|6.3|Watch all credits
+S|The Consultant|O|6.3|Short film · Explains the bar scene from The Incredible Hulk
+S|A Funny Thing Happened on the Way to Thor's Hammer|O|6.9|Short film
+S|Iron Man 2 (Post-Credit Scene)|E||
+F|Thor|E|6.8|1 Credit · STOP before credits — the credits scene belongs RIGHT BEFORE The Avengers
+S|Captain America: The First Avenger (Credits)|E||
+S|Thor (Post-Credit Scene)|E||
+F|The Avengers|E|8.1|Watch all credits
+S|Item 47|O|6.4|Short film
+# PHASE 2 — HYDRA & THE INFINITY STONES (2012–2015)
+F|Iron Man 3|E|6.9|Watch credits
+F|Thor: The Dark World|E|6.5|Watch all credits
+T|Agents of S.H.I.E.L.D. (Season 1)|O|7.5|Episodes 1–16
+S|All Hail the King|E|6.8|Short film
+F|Captain America: The Winter Soldier|E|7.7|Watch credits
+T|Agents of S.H.I.E.L.D. (Season 1)|O|7.5|Episodes 17–22
+F|Guardians of the Galaxy|E|7.9|Watch both credit scenes
+F|Guardians of the Galaxy Vol. 2|E|7.6|Watch all 5 credits
+T|Agents of S.H.I.E.L.D. (Season 2)|O|7.5|Episodes 1–19
+# PHASE 3A — STREET LEVEL HEROES (2015–2016)
+T|Daredevil (Season 1)|R|8.2|13 eps
+T|Jessica Jones (Season 1)|R|7.5|13 eps
+F|Avengers: Age of Ultron|E|7.3|Watch the mid-credits scene (Thanos).
+T|Agents of S.H.I.E.L.D. (Season 2)|O|7.5|Episodes 20–22
+S|WHiH Newsfront (Season 1)|O|6.2|5 web episodes ~3min
+F|Ant-Man|E|7.1|Watch credits
+# PHASE 3B — CIVIL WAR & FALLOUT (2016–2018)
+T|Agents of S.H.I.E.L.D. (Season 3)|O|7.5|Episodes 1–19
+T|Daredevil (Season 2)|R|8.2|13 eps
+S|WHiH Newsfront (Season 2)|O|6.2|5 web eps ~3min
+F|Captain America: Civil War|E|7.5|Watch credits
+T|Agents of S.H.I.E.L.D. (Season 3)|O|7.5|Episodes 20–22
+S|Team Thor|O|7.2|Comedic mockumentary — skippable.
+S|Team Thor: Part 2|O|6.9|Comedic short — skippable.
+T|Luke Cage (Season 1)|O|6.9|13 eps
+T|Iron Fist (Season 1)|O|6.5|13 eps
+T|The Defenders (Season 1)|R|7.0|8 eps
+F|Black Widow|E|7.2|1 Credit · STOP before end-credits — post-credit scene belongs right before Hawkeye
+T|Eyes of Wakanda (Season 1)|R|6.2|4 animated eps ~30min · Watch right before Black Panther — its ending shows how T'Challa gets his weapons.
+F|Black Panther|E|7.4|Watch credits.
+F|Spider-Man: Homecoming|E|7.3|Watch credits.
+T|The Punisher (Season 1)|R|8.2|13 eps ~55min
+F|Doctor Strange|E|7.4|Watch credits.
+T|Cloak & Dagger (Season 1)|O|7.1|10 eps
+T|Agents of S.H.I.E.L.D. (Season 4)|O|7.5|22 eps
+T|Agents of S.H.I.E.L.D.: Slingshot|O|7.1|6 web eps ~5min
+T|Inhumans (Season 1)|O|5.8|8 eps
+T|Jessica Jones (Season 2)|O|7.5|13 eps
+T|Luke Cage (Season 2)|O|6.9|13 eps
+T|Iron Fist (Season 2)|O|6.5|10 eps
+T|Daredevil (Season 3)|R|8.2|13 eps
+T|Cloak & Dagger (Season 2)|O|7.1|10 eps
+F|Deadpool|R|7.6|Watch before Deadpool & Wolverine.
+F|Deadpool 2|R|7.5|Watch before Deadpool & Wolverine.
+# PHASE 3C — RAGNAROK & THE INFINITY WAR (2018)
+T|Agents of S.H.I.E.L.D. (Season 5)|O|7.5|22 eps
+T|Runaways (Season 1)|O|7.3|10 eps
+T|Runaways (Season 2)|O|7.3|13 eps
+T|Runaways (Season 3)|O|7.3|10 eps
+F|Thor: Ragnarok|E|7.6|Watch credits.
+S|Team Darryl|O|6.2|Comedic short — skippable.
+T|The Punisher (Season 2)|R|8.2|13 eps
+T|Jessica Jones (Season 3)|O|7.5|13 eps
+F|Venom|O|6.8|
+F|Ant-Man and the Wasp|E|6.9|1 Credit · STOP before credits — the credits scene belongs RIGHT AFTER Infinity War
+F|Avengers: Infinity War|E|8.2|Watch main credits. PAUSE before post-credits.
+S|Ant-Man & The Wasp (All Credits)|E||Watch NOW immediately after Infinity War — it IS the snap happening in real time
+S|Captain Marvel (Post-Credits Scene)|E||Watch NOW — directly connects to Endgame opening
+T|Helstrom (Season 1)|O|6.7|10 eps
+# LEGACY: FUTURE (2029)
+F|Logan|R|7.8|Its ending is the emotional backdrop to Deadpool & Wolverine.
+# PHASE 4 — THE BLIP & NEW BEGINNINGS (2023)
+F|Avengers: Endgame|E|8.2|Block out 3 hours.
+T|WandaVision (Season 1)|E|8.2|9 eps · STOP before Ep 9 mid-credit scene — it's a separate entry below
+S|WandaVision (Ep 9 Mid-Credit Scene)|E||Watch NOW immediately after WandaVision Episode 9
+T|The Falcon and the Winter Soldier (Season 1)|E|7.6|6 eps
+T|Loki (Season 1)|E|8.2|6 eps
+T|What If...? (Season 1)|R|8.0|9 eps
+T|Agents of S.H.I.E.L.D. (Season 6)|O|7.5|13 eps
+T|Agents of S.H.I.E.L.D. (Season 7)|O|7.5|13 eps
+S|Peter's To-Do List|E|7.0|Part of Far From Home — four minutes of footage cut from it. Watch with the film.
+F|Spider-Man: Far From Home|E|7.4|1 Credit · Watch credits.
+# PHASE 4 — MULTIVERSE OPENS (2024–2025)
+S|Black Widow (Post-Credit Scene)|E||Watch NOW — directly sets up Hawkeye
+T|Hawkeye (Season 1)|E|7.8|6 eps
+F|Eternals|E|6.8|
+F|Shang-Chi and the Legend of the Ten Rings|E|7.5|Watch credits.
+F|Venom: Let There Be Carnage|O|6.7|Mid-credits crosses into the MCU.
+F|Spider-Man: No Way Home|E|7.9|Watch the Tobey & Andrew Spider-Man films first for the full payoff.
+F|Spider-Man: Across the Spider-Verse|O|8.3|
+F|Morbius|O|5.9|
+S|The Daily Bugle (Season 1)|O||Short-form web series
+S|The Daily Bugle (Season 2)|O||Short-form web series
+F|Doctor Strange in the Multiverse of Madness|E|7.2|
+T|Moon Knight (Season 1)|R|7.6|6 eps
+T|Ms. Marvel (Season 1)|E|6.3|6 eps
+F|Thor: Love and Thunder|E|6.4|
+F|Black Panther: Wakanda Forever|E|7.0|
+T|She-Hulk (Season 1)|R|6.1|9 eps
+T|Echo (Season 1)|E|6.0|5 eps
+T|Ironheart (Season 1)|R|5.3|6 eps
+S|Werewolf by Night|O|7.0|
+S|GOTG Holiday Special|E|7.1|
+S|I Am Groot (Season 1)|O|7.0|5 animated shorts
+S|I Am Groot (Season 2)|O|7.0|5 animated shorts
+F|Ant-Man and the Wasp: Quantumania|E|6.2|
+F|Guardians of the Galaxy Vol. 3|E|7.9|
+# PHASE 5 — THE MULTIVERSE WAR (2025–2026)
+F|Venom: The Last Dance|O|6.7|
+T|Secret Invasion (Season 1)|R|6.5|6 eps
+F|The Marvels|E|5.9|
+T|Marvel Zombies|R|7.3|4 animated eps
+T|Loki (Season 2)|E|8.2|6 eps
+T|What If...? (Season 2)|R|8.0|9 eps
+T|What If...? (Season 3)|R|8.0|9 eps
+F|Deadpool & Wolverine|E|7.6|Watch Logan before this for full impact.
+T|Agatha All Along (Season 1)|R|7.4|9 eps
+T|Your Friendly Neighborhood Spider-Man (Season 1)|O|7.8|10 animated eps
+T|Daredevil: Born Again (Season 1)|R|8.2|9 eps
+F|Captain America: Brave New World|E|6.0|
+F|Thunderbolts*|E|7.3|
+# PHASE 6 — DOOMSDAY (2026)
+T|Wonder Man (Season 1)|R|7.0|8 eps · All dropped Jan 27 2026.
+T|Daredevil: Born Again (Season 2)|R|8.2|8 eps · Premieres Mar 24 2026 · Concurrent with The Punisher: One Last Kill.
+S|The Punisher: One Last Kill|O|8.3|May 12 2026
+F|Spider-Man: Brand New Day|E|8.0|
+T|VisionQuest (Season 1)|R||8 eps · Watch WandaVision and Agatha All Along first.
+F|The Fantastic Four: First Steps|E|7.0|
+F|Avengers: Doomsday|E||
+`;
+
+const KINDS = { F: "FILM", T: "TV", S: "SPC" };
+const IMPS = {
+  E: { cls: "essential", label: "★ ESSENTIAL TO THE MCU" },
+  R: { cls: "recommended", label: "◆ RECOMMENDED FOR THE MCU" },
+  O: { cls: "optional", label: "○ OPTIONAL TO THE MCU" }
+};
+
+function parseCatalog(raw) {
+  const out = [];
+  let section = "";
+  const mk = (kind, title, imp, rating, note) => out.push({
+    kind, title, imp, rating, note, section
+  });
+  for (const line of raw.split("\n")) {
+    const l = line.trim();
+    if (!l) continue;
+    if (l[0] === "#") { section = l.slice(1).trim(); continue; }
+    const p = l.split("|");
+    if (p[0] === "@") {
+      const [, title, imp, rating, eps, label] = p;
+      let start = 1, list = eps;
+      if (eps.includes(":")) { const s = eps.split(":"); start = Number(s[0]); list = s[1]; }
+      list.split(",").forEach((n, i) =>
+        mk("T", `${title} (Season ${start + i})`, imp, rating, `${n} ${label}`));
+    } else {
+      const [kind, title, imp, rating, note] = p;
+      mk(kind, title, imp, rating, note);
+    }
+  }
+  return out;
+}
+
+const base = parseCatalog(RAW);
+const KEY = "marvel-watch-order-v2";
+const $ = id => document.getElementById(id);
+const els = {
+  search: $("search"), section: $("section"), importance: $("importance"), status: $("status"),
+  results: $("results"), total: $("total"), watched: $("watched"), percent: $("percent"), bar: $("progressBar")
+};
+
+let watched = new Set(), skipped = new Set();
+let queued = false;
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s) {
+      watched = new Set(s.watched || []);
+      skipped = new Set(s.skipped || []);
+    }
+  } catch (e) {}
+}
+function persist() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ watched: [...watched], skipped: [...skipped] }));
+  } catch (e) { console.warn("Could not save progress:", e); }
+}
+function schedule() {
+  if (queued) return;
+  queued = true;
+  requestAnimationFrame(() => { queued = false; render(); });
+}
+
+const ESC = { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" };
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ESC[c]);
+
+let cache = new WeakMap();
+function searchText(item) {
+  let t = cache.get(item);
+  if (t === undefined) {
+    t = [item.title, item.note, item.section].join(" ").toLowerCase();
+    cache.set(item, t);
+  }
+  return t;
+}
+
+let sectionKey = "";
+function populateSections(items) {
+  const names = [...new Set(items.map(x => x.section))];
+  const key = names.join("\u0000");
+  if (key === sectionKey) return;
+  sectionKey = key;
+  const cur = els.section.value;
+  els.section.innerHTML = '<option value="">All sections</option>' +
+    names.map(n => `<option>${esc(n)}</option>`).join("");
+  els.section.value = names.includes(cur) ? cur : "";
+}
+
+function render() {
+  const items = base;
+  populateSections(items);
+
+  const q = els.search.value.toLowerCase().trim();
+  const sec = els.section.value, imp = els.importance.value, st = els.status.value;
+
+  // Overall stats
+  const skippedCount = items.reduce((n, _, i) => n + (skipped.has(i) ? 1 : 0), 0);
+  const watchedCount = items.reduce((n, _, i) => n + (watched.has(i) ? 1 : 0), 0);
+  const denom = items.length - skippedCount;
+  const pct = denom > 0 ? Math.round(watchedCount / denom * 100) : 0;
+  els.total.textContent = items.length;
+  els.watched.textContent = watchedCount;
+  els.percent.textContent = pct + "%";
+  els.bar.style.width = pct + "%";
+
+  // Per-section totals (all entries in section, regardless of filters)
+  const secTotal = {}, secDone = {};
+  items.forEach((it, i) => {
+    secTotal[it.section] = (secTotal[it.section] || 0) + 1;
+    if (watched.has(i)) secDone[it.section] = (secDone[it.section] || 0) + 1;
+  });
+
+  const visible = [];
+  items.forEach((it, i) => {
+    if (q && !searchText(it).includes(q)) return;
+    if (sec && it.section !== sec) return;
+    if (imp && it.imp !== imp) return;
+    if (st === "watched" && !watched.has(i)) return;
+    if (st === "skipped" && !skipped.has(i)) return;
+    if (st === "unwatched" && (watched.has(i) || skipped.has(i))) return;
+    visible.push(i);
+  });
+
+  if (!visible.length) {
+    els.results.innerHTML = '<div class="empty">No entries match your filters.</div>';
+    return;
+  }
+
+  let prev = null;
+  const parts = [];
+  for (const i of visible) {
+    const it = items[i];
+    if (it.section !== prev) {
+      prev = it.section;
+      parts.push(`<div class="section-title"><span>${esc(it.section)}</span><span>${secDone[it.section] || 0} / ${secTotal[it.section]} TITLES</span></div>`);
+    }
+    const w = watched.has(i), s = skipped.has(i);
+    const impInfo = IMPS[it.imp];
+    parts.push(`
+      <article class="item ${w ? "watched" : ""} ${s ? "skipped" : ""}">
+        <div class="number">${i + 1}<small>${KINDS[it.kind] || ""}</small></div>
+        <div>
+          <h3>${esc(it.title)}</h3>
+          <div class="meta">
+            ${impInfo ? `<span class="tag ${impInfo.cls}">${impInfo.label}</span>` : ""}
+            ${it.rating ? `<span class="tag">★ ${esc(it.rating)}</span>` : ""}
+          </div>
+          ${it.note ? `<div class="notes">${esc(it.note)}</div>` : ""}
+        </div>
+        <div class="actions">
+          <button data-act="w" data-i="${i}" class="${w ? "on-w" : ""}" title="Watched" aria-label="Mark watched">✓</button>
+          <button data-act="s" data-i="${i}" class="${s ? "on-s" : ""}" title="Skip" aria-label="Skip">✕</button>
+        </div>
+      </article>`);
+  }
+  els.results.innerHTML = parts.join("");
+}
+
+els.results.addEventListener("click", e => {
+  const b = e.target.closest("button[data-act]");
+  if (!b) return;
+  const i = Number(b.dataset.i);
+  if (b.dataset.act === "w") {
+    if (watched.has(i)) watched.delete(i); else { watched.add(i); skipped.delete(i); }
+  } else {
+    if (skipped.has(i)) skipped.delete(i); else { skipped.add(i); watched.delete(i); }
+  }
+  persist();
+  schedule();
+});
+
+let timer;
+els.search.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(schedule, 120); });
+["section", "importance", "status"].forEach(id => $(id).addEventListener("change", schedule));
+
+load();
+render();
+</script>
+</body>
+</html>
